@@ -1,0 +1,14 @@
+pimped demo - all the chat is also send to TCP sockets in out
+
+try with aduino + ethernet-shield connect to port 7000
+or net cat
+
+$ nc localhost 7000
+
+
+Demo for node.js http://tinyclouds.org/node
+
+to run
+$ /usr/local/bin/node server.js
+
+
