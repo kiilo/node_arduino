@@ -6,6 +6,8 @@ tcpGuests = [];
 // when the daemon started
 var starttime = (new Date()).getTime();
 
+var ArduinoNr = 0;
+
 var mem = process.memoryUsage();
 // every 10 seconds poll for the memory.
 setInterval(function () {
@@ -231,31 +233,37 @@ var tcpServer = net.createServer(function (socket) {
 tcpServer.on('connection',function(socket){
     socket.write('connected to the tcp server\r\n');
     console.log('num of connections on port ' + TCPPORT + ': ' + tcpServer.connections);
-    var ArduinoSession = createSession("arduino"+ tcpServer.connections);
+    ArduinoNr++;
+    var ArduinoSession = createSession("arduino"+ ArduinoNr);
+    channel.appendMessage("arduino"+ ArduinoNr,"join");
     tcpGuests.push(socket);
 
     socket.on('data',function(data){
-        console.log('received on tcp socket:' + data);
+        //console.log('received on tcp socket:' + data);
         //socket.write('OK\n');
         
         //send data to guest socket.io chat server
 	//ArduinoSession.poke();
-        channel.appendMessage(ArduinoSession.nick, 'msg', data + '\n');	    
-        })
+        channel.appendMessage(ArduinoSession.nick, 'msg', data);	    
+    });
 
-});
-
-tcpServer.on('close',function(socket){
-    //socket.write('connected to the tcp server\r\n');
-    ArduinoSession.destroy; //delete Arduino from the list
+    socket.on('close',function(socket){
+	
+	channel.appendMessage(ArduinoSession.nick, "part");    	
+    	ArduinoSession.destroy(); //delete Arduino from the list
     	for (var i = 0; i < tcpGuests.length; i++) {
-		if (tcpGuests[i] == socket) {
+		//console.log(tcpGuests[i]._handle);
+		if (tcpGuests[i]._handle == null) {
 			console.log("REMOVE this socket " + i);
-    			tcpGuest = tcpGuests.splice(i,1);
+			tcpGuest = tcpGuests.splice(i,1);
 		}
     	}
-     console.log('num of connections on port ' + TCPPORT + ': ' + tcpServer.connections);
+        console.log('num of connections on port ' + TCPPORT + ': ' + tcpServer.connections);
+     });
+
 });
+
+
 
 
 tcpServer.listen(TCPPORT);
