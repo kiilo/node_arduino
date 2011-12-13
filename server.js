@@ -21,6 +21,7 @@ var fu = require("./fu"),
     url = require("url"),
     qs = require("querystring");
     net = require("net");
+    carrier = require('carrier');
 
 var MESSAGE_BACKLOG = 200,
     SESSION_TIMEOUT = 60 * 1000;
@@ -42,7 +43,7 @@ var channel = new function () {
 	for (var i = 0; i < tcpGuests.length; i++) {
 	// ok write also to the TCP socket (arduino)
 		try {
-			tcpGuests[i].write(text);
+			tcpGuests[i].write(text+"\n");
 		}
 		catch (eee) {
 			console.log("remove this socket " + i);
@@ -228,6 +229,10 @@ fu.get("/send", function (req, res) {
 var tcpServer = net.createServer(function (socket) {
   socket.setEncoding("utf8")
   console.log('tcp server running on port' + TCPPORT);
+  var my_carrier = carrier.carry(socket);
+//  	my_carrier.on('line',  function(line) {
+//    	console.log('got one line: ' + line);
+//  });
 });
 
 tcpServer.on('connection',function(socket){
@@ -237,18 +242,24 @@ tcpServer.on('connection',function(socket){
     var ArduinoSession = createSession("arduino"+ ArduinoNr);
     channel.appendMessage("arduino"+ ArduinoNr,"join");
     tcpGuests.push(socket);
+    var my_carrier = carrier.carry(socket);
 
-    socket.on('data',function(data){
+    my_carrier.on('line',  function(line) {
+         //console.log('got one line: ' + line);
+         channel.appendMessage(ArduinoSession.nick, 'msg', line);
+    });
+
+
+    //socket.on('data',function(data){
         //console.log('received on tcp socket:' + data);
         //socket.write('OK\n');
         
         //send data to guest socket.io chat server
 	//ArduinoSession.poke();
-        channel.appendMessage(ArduinoSession.nick, 'msg', data);	    
-    });
+        //channel.appendMessage(ArduinoSession.nick, 'msg', data);	    
+    //});
 
     socket.on('close',function(socket){
-	
 	channel.appendMessage(ArduinoSession.nick, "part");    	
     	ArduinoSession.destroy(); //delete Arduino from the list
     	for (var i = 0; i < tcpGuests.length; i++) {
