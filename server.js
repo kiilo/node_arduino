@@ -40,16 +40,6 @@ var channel = new function () {
     switch (type) {
       case "msg":
         sys.puts("<" + nick + "> " + text);
-	for (var i = 0; i < tcpGuests.length; i++) {
-	// ok write also to the TCP socket (arduino)
-		try {
-			tcpGuests[i].write(text+"\n");
-		}
-		catch (eee) {
-			console.log("remove this socket " + i);
-    			tcpGuest = tcpGuests.splice(i,1);
-		}
-	}
         break;
       case "join":
         sys.puts(nick + " join");
@@ -222,6 +212,17 @@ fu.get("/send", function (req, res) {
   session.poke();
 
   channel.appendMessage(session.nick, "msg", text);
+  for (var i = 0; i < tcpGuests.length; i++) { 	
+	try {
+		tcpGuests[i].write(text+"\n");
+		console.log("send to: " + i);
+	}
+	catch (eee) {
+		console.log("removed socket " + i);
+    		tcpGuest = tcpGuests.splice(i,1);
+        }
+  }
+  
   res.simpleJSON(200, { rss: mem.rss });
 });
 
@@ -236,7 +237,7 @@ var tcpServer = net.createServer(function (socket) {
 });
 
 tcpServer.on('connection',function(socket){
-    socket.write('connected to the tcp server\r\n');
+    socket.write(':connect\r\n');
     console.log('num of connections on port ' + TCPPORT + ': ' + tcpServer.connections);
     ArduinoNr++;
     var ArduinoSession = createSession("arduino"+ ArduinoNr);
@@ -245,8 +246,23 @@ tcpServer.on('connection',function(socket){
     var my_carrier = carrier.carry(socket);
 
     my_carrier.on('line',  function(line) {
-         //console.log('got one line: ' + line);
          channel.appendMessage(ArduinoSession.nick, 'msg', line);
+	// ok write also to the TCP socket (arduino)	 
+	for (var i = 0; i < tcpGuests.length; i++) {
+		if (tcpGuests[i] === socket) {
+			//console.log("bingo");
+		}
+		else { 	
+			try {
+				tcpGuests[i].write(line+"\n");
+				//console.log("send to: " + i);
+			}
+			catch (eee) {
+				console.log("this socket " + i);
+    				tcpGuest = tcpGuests.splice(i,1);
+			}
+		}
+	}
     });
 
 
