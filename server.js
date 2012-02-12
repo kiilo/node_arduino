@@ -1,5 +1,5 @@
 HOST = null; // localhost
-PORT = 8001;
+PORT = 8080;
 TCPPORT = 7000;
 tcpGuests = [];
 
@@ -16,11 +16,11 @@ setInterval(function () {
 
 
 
-var fu = require("./fu"),
-    sys = require("sys"),
+var express = require("express"),
+    sys = require("util"),
     url = require("url"),
-    qs = require("querystring");
-    net = require("net");
+    qs = require("querystring"),
+    net = require("net"),
     carrier = require('carrier');
 
 var MESSAGE_BACKLOG = 200,
@@ -39,13 +39,13 @@ var channel = new function () {
 
     switch (type) {
       case "msg":
-        sys.puts("<" + nick + "> " + text);
+        sys.log("<" + nick + "> " + text);
         break;
       case "join":
-        sys.puts(nick + " join");
+        sys.log(nick + " join");
         break;
       case "part":
-        sys.puts(nick + " part");
+        sys.log(nick + " part");
         break;
     }
 
@@ -127,61 +127,55 @@ setInterval(function () {
   }
 }, 1000);
 
-fu.listen(Number(process.env.PORT || PORT), HOST);
+var app = require('express').createServer();
 
-fu.get("/", fu.staticHandler("index.html"));
-fu.get("/style.css", fu.staticHandler("style.css"));
-fu.get("/client.js", fu.staticHandler("client.js"));
-fu.get("/jquery-1.2.6.min.js", fu.staticHandler("jquery-1.2.6.min.js"));
-
-
-fu.get("/who", function (req, res) {
+app.get("/who", function (req, res) {
   var nicks = [];
   for (var id in sessions) {
     if (!sessions.hasOwnProperty(id)) continue;
     var session = sessions[id];
     nicks.push(session.nick);
   }
-  res.simpleJSON(200, { nicks: nicks
+  res.send({ nicks: nicks
                       , rss: mem.rss
                       });
 });
 
-fu.get("/join", function (req, res) {
+app.get("/join", function (req, res) {
   var nick = qs.parse(url.parse(req.url).query).nick;
   if (nick == null || nick.length == 0) {
-    res.simpleJSON(400, {error: "Bad nick."});
+    res.send({error: "Bad nick."});
     return;
   }
   var session = createSession(nick);
   if (session == null) {
-    res.simpleJSON(400, {error: "Nick in use"});
+    res.send({error: "Nick in use"});
     return;
   }
 
-  //sys.puts("connection: " + nick + "@" + res.connection.remoteAddress);
+  //sys.log("connection: " + nick + "@" + res.connection.remoteAddress);
 
   channel.appendMessage(session.nick, "join");
-  res.simpleJSON(200, { id: session.id
+  res.send({ id: session.id
                       , nick: session.nick
                       , rss: mem.rss
                       , starttime: starttime
                       });
 });
 
-fu.get("/part", function (req, res) {
+app.get("/part", function (req, res) {
   var id = qs.parse(url.parse(req.url).query).id;
   var session;
   if (id && sessions[id]) {
     session = sessions[id];
     session.destroy();
   }
-  res.simpleJSON(200, { rss: mem.rss });
+  res.send({ rss: mem.rss });
 });
 
-fu.get("/recv", function (req, res) {
+app.get("/recv", function (req, res) {
   if (!qs.parse(url.parse(req.url).query).since) {
-    res.simpleJSON(400, { error: "Must supply since parameter" });
+    res.send( { error: "Must supply since parameter" });
     return;
   }
   var id = qs.parse(url.parse(req.url).query).id;
@@ -195,17 +189,17 @@ fu.get("/recv", function (req, res) {
 
   channel.query(since, function (messages) {
     if (session) session.poke();
-    res.simpleJSON(200, { messages: messages, rss: mem.rss });
+    res.send({ messages: messages, rss: mem.rss });
   });
 });
 
-fu.get("/send", function (req, res) {
+app.get("/send", function (req, res) {
   var id = qs.parse(url.parse(req.url).query).id;
   var text = qs.parse(url.parse(req.url).query).text;
 
   var session = sessions[id];
   if (!session || !text) {
-    res.simpleJSON(400, { error: "No such session id" });
+    res.send({ error: "No such session id" });
     return;
   }
 
@@ -215,59 +209,86 @@ fu.get("/send", function (req, res) {
   for (var i = 0; i < tcpGuests.length; i++) { 	
 	try {
 		tcpGuests[i].write(text+"\n");
-		console.log("send to: " + i);
+		sys.log("send to: " + i);
 	}
 	catch (eee) {
-		console.log("removed socket " + i);
+		sys.log("removed socket " + i);
     		tcpGuest = tcpGuests.splice(i,1);
         }
   }
   
-  res.simpleJSON(200, { rss: mem.rss });
+  res.send({ rss: mem.rss });
 });
+
+app.use("/",express.static(__dirname + '/static'));
+
+app.listen(PORT);
+
 
 //tcp socket server
 var tcpServer = net.createServer(function (socket) {
   socket.setEncoding("utf8")
-  console.log('tcp server running on port' + TCPPORT);
+  sys.log('tcp server running on port' + TCPPORT);
   var my_carrier = carrier.carry(socket);
 //  	my_carrier.on('line',  function(line) {
-//    	console.log('got one line: ' + line);
+//    	sys.log('got one line: ' + line);
 //  });
 });
 
 tcpServer.on('connection',function(socket){
-    socket.write(':connect\r\n');
-    console.log('num of connections on port ' + TCPPORT + ': ' + tcpServer.connections);
-    ArduinoNr++;
-    var ArduinoSession = createSession("arduino"+ ArduinoNr);
-    channel.appendMessage("arduino"+ ArduinoNr,"join");
-    tcpGuests.push(socket);
+    socket.write('?\n');
+    socket.setTimeout(3000, (function(){
+    if (!auth) {
+    		socket.write('?\n');
+                socket.end('403\n');
+                sys.log("timeout for: " + socket.remoteAddress);
+                } 
+    }) )
+    var auth = false;
+    var ArduinoSession;
     var my_carrier = carrier.carry(socket);
+    
 
-    my_carrier.on('line',  function(line) {
-         channel.appendMessage(ArduinoSession.nick, 'msg', line);
-	// ok write also to the TCP socket (arduino)	 
-	for (var i = 0; i < tcpGuests.length; i++) {
-		if (tcpGuests[i] === socket) {
-			//console.log("bingo");
-		}
-		else { 	
-			try {
-				tcpGuests[i].write(line+"\n");
-				//console.log("send to: " + i);
-			}
-			catch (eee) {
-				console.log("this socket " + i);
-    				tcpGuest = tcpGuests.splice(i,1);
-			}
-		}
-	}
-    });
+    
+     my_carrier.on('line', function (line) {
+         if (auth) {
+             channel.appendMessage(ArduinoSession.nick, 'msg', line);
+             // ok write also to the TCP socket (arduino)	 
+             for (var i = 0; i < tcpGuests.length; i++) {
+                 if (tcpGuests[i] === socket) {
+                     //sys.log("bingo");
+                 } else {
+                     try {
+                         tcpGuests[i].write(line + "\n");
+                         //sys.log("send to: " + i);
+                     } catch (eee) {
+                         sys.log("this socket " + i + " DIED");
+                         tcpGuest = tcpGuests.splice(i, 1);
+                     }
+                 }
+             }
+
+         } else {
+             if (line == "k BC37ACB390EF2") {
+             	 socket.setTimeout(0,(function(){}));
+                 sys.log('SUCCESSFUL connection from: ' + socket.remoteAddress + ' : ' + socket.remotePort);
+                 ArduinoNr++;
+                 ArduinoSession = createSession("arduino" + ArduinoNr);
+                 channel.appendMessage("arduino" + ArduinoNr, "join");
+                 tcpGuests.push(socket);
+                 socket.write('200\n');
+                 auth = true;
+             } else {
+                 sys.log("login failed from: " + socket.remoteAddress + " KEY " + line);
+                 socket.write('?\n');
+                 socket.end('403\n');
+             	}
+             }
+         });    
 
 
     //socket.on('data',function(data){
-        //console.log('received on tcp socket:' + data);
+        //sys.log('received on tcp socket:' + data);
         //socket.write('OK\n');
         
         //send data to guest socket.io chat server
@@ -276,16 +297,18 @@ tcpServer.on('connection',function(socket){
     //});
 
     socket.on('close',function(socket){
+    	if (auth) {
 	channel.appendMessage(ArduinoSession.nick, "part");    	
     	ArduinoSession.destroy(); //delete Arduino from the list
     	for (var i = 0; i < tcpGuests.length; i++) {
-		//console.log(tcpGuests[i]._handle);
+		//sys.log(tcpGuests[i]._handle);
 		if (tcpGuests[i]._handle == null) {
-			console.log("REMOVE this socket " + i);
+			sys.log("REMOVE this socket " + i);
 			tcpGuest = tcpGuests.splice(i,1);
 		}
     	}
-        console.log('num of connections on port ' + TCPPORT + ': ' + tcpServer.connections);
+    	}
+        sys.log('num of connections on port ' + TCPPORT + ': ' + tcpServer.connections);
      });
 
 });

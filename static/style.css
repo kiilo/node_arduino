@@ -1,0 +1,185 @@
+body {
+  padding: 0;
+  margin: 0;
+}
+body, #entry {
+  background: #223344;
+  color: #eee;
+}
+body, table {
+  font-family: DejaVu Sans Mono, fixed; 
+  font-size: 14pt;
+  line-height: 150%;
+}
+tr,td,table {
+  padding: 0;
+  margin: 0;
+  outline-width: 0;
+  border-width: 0;
+}
+table {
+  border-collapse: collapse;
+  border-spacing: 0
+}
+
+
+a { text-decoration: none; color: #888; }
+a:hover { text-decoration: underline; color: #aaa; }
+
+#loading, #connect {
+  background: #333395;
+  top: 0;
+  left: 0;
+  padding: 1em;
+}:12 	user1082 	L 1
+15:12 	user1082 	L 0
+
+#chat { z-index: 10000001; 
+  visibility: show;
+  background-color: #22252a;
+  overflow:scroll;
+  height: 640px;}
+
+
+#loading { z-index: 10000002; }
+#connect { z-index: 10000003; }
+
+#loading p, #connect fieldset  {
+  font-family: DejaVu Sans Mono, fixed; 
+  width: 30em;
+  border: 0;
+}
+
+#toolbar {
+  /*position: fixed;
+  color: #fff;
+  width: 100%;*/ 
+  bottom: 0;
+  background: #733;
+}
+
+#entry {
+  width: 100%;
+  font-size: inherit;
+  padding: 1em;
+  margin: 0;
+  border-width: 0;
+  outline-width: 0;
+  clear: both;
+}
+
+#log {
+  display: block;
+  /* enough padding to clear the toolbar.. is there a better way to do this? */
+  padding-bottom: 5.1em; 
+  background: inherit;
+  overflow: hidden;
+}
+
+/* not very important info */
+.notice td, .join td, .part td, .message .date { color: #555; }
+.error td { color: #933; }
+.personal .nick, .notice .nick { color: #cd5; }
+
+.message {
+  margin: 0.1em 0;
+}
+
+.message td {
+  vertical-align: top;
+}
+
+.nick { 
+  font-weight: bold;
+  padding: 0 1em 0 0.5em;
+}
+
+.nick a {
+  color: inherit;
+}
+
+
+
+#toolbar ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+#toolbar li {
+  display: block; 
+  float: left;
+  margin: 0 2em 0 0;
+
+}
+
+#usersLink {
+  color: inherit;
+}
+
+#container {
+	width: 940px;
+	margin: 0 auto;
+	font-size: 1.4em;
+	overflow: auto;
+	padding: 90px 0 40px;
+}
+
+#content {
+	float: left;
+	width: 625px;
+}
+
+
+
+#header-wrap {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+}
+
+#header-container {
+	height: 90px;
+}
+
+#header {
+	width: 940px;
+	margin: 0 auto;
+	position: relative;
+}
+
+#footer-wrap {
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	width: 100%;
+}
+
+#footer-container {
+	height: 40px;
+}
+
+#footer {
+	width: 940px;
+	margin: 0 auto;
+	position: relative;
+
+
+
+#footer-wrap {
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	width: 100%;
+}
+
+#footer-container {
+	height: 40px;
+}
+
+#footer {
+	width: 940px;
+	margin: 0 auto;
+	position: relative;
+}
