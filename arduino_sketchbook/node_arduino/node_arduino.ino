@@ -80,10 +80,14 @@ void loop()
     if( c == 'o') { // o Pin PinStatus :: output pin
       Pin = finder.getValue();
       PinStatus[Pin] = finder.getValue();
-      if (PinModes[Pin] > 0) {
+      if (PinModes[Pin] == 1) {
         digitalWrite(Pin, PinStatus[Pin]);
       }
+      if (PinModes[Pin] == 2) {
+        analogWrite(Pin, PinStatus[Pin]);
+      }
     }
+    
     if( c == 'm') { // m Pin PinMode :: PinMode change pin mode
       Pin = finder.getValue();
       Mode = finder.getValue();
@@ -159,7 +163,7 @@ void connectTCP() {
     Serial.println("connected");
     // send secret key fo auth:
     client.println("k BC37ACB390EF2");
-    TextFinder finder( client);
+    TextFinder finder( client, 1);
   }
   else {
     // kf you didn't get a connection to the server:
