@@ -16,6 +16,7 @@ node arduino
  by kiilo (Tobias Hoffmann)
  */
 
+
 #include <SPI.h>
 #include <Ethernet.h>
 #include <TextFinder.h>
@@ -42,7 +43,7 @@ int PinStatus[] = {
 int AnalogEnable[] = {
   0, 0, 0, 0, 0, 0};
 int Analog;
-int AnalogStatus[] = { 
+int AnalogStatus[] = {
   -1, -1, -1, -1, -1, -1}; // it will update on first reading
 
 long PingTimer = 0;
@@ -65,6 +66,8 @@ void setup() {
   delay(1000);
   connectTCP();
   // if you get a connection, report back via serial:
+  PingTimer = millis();
+  UpdateTimer = millis();
 }
 
 void loop()
@@ -102,8 +105,8 @@ void loop()
   }
 
   // OUTGOING MESSAGES /////////////////////////////////////////////////
-  if (UpdateTimer < millis()) {
-    UpdateTimer = millis() + UpdateInterval;
+  if ((long)(UpdateTimer - millis()) < 0) {
+    UpdateTimer = (long)(UpdateTimer + UpdateInterval);
 
     for(Pin = 2; Pin < 10; Pin++) {
       if(PinModes[Pin] == 0) {
@@ -134,8 +137,8 @@ void loop()
     }
   }
 
-  if (PingTimer < millis()) {
-    PingTimer = millis() + 20000;
+  if ((long)(PingTimer - millis()) < 0) {
+    PingTimer = (long)(PingTimer + 20000);
     client.write("p ");
     client.print(millis());
     client.write("\n");
@@ -158,17 +161,16 @@ void loop()
 }
 
 void connectTCP() {
-  Serial.println("connect");
+  Serial.println("con");
   if (client.connect("kiilo.org", 7000)) {
-    Serial.println("connected");
+    //Serial.println("200");
     // send secret key fo auth:
     client.println("k BC37ACB390EF2");
     TextFinder finder( client, 1);
   }
   else {
     // kf you didn't get a connection to the server:
-    Serial.println("connection failed");
+    Serial.println("400");
   }
 }
-
 
